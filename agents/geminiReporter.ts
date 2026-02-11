@@ -135,6 +135,12 @@ Provide a detailed analytical report covering:
 4. **Content Analysis** – Analyze the caption, hashtags, and tone.
 5. **Performance Insights** – Is this a high-performing post? What signals indicate that?
 6. **Recommendations** – Actionable suggestions to improve future content based on this data.
+7. **Website links in the profile** - If the profile has any website links, show it to the user, if the user asks like "does the porfile has any website links?" or "Show all the website links in the profile".
+
+## Strict Guidelines
+1. Show the genuine likes, comments and views count wihout any estimation, prediction, or assumption.
+2. The content analysis also contains that whether the post either video and photo will grow in the current trend
+
 
 ${userQuery ? `\n## Additional User Request\n${userQuery}\n` : ''}
 

@@ -13,7 +13,7 @@ interface ParsedIntent {
 /**
  * Intent Parser Agent
  * Uses Gemini to understand user's natural language prompt,
- * detect the platform (Instagram / GitHub), extract URLs, and determine intent.
+ * detect the platform (Instagram / GitHub / Crypto), extract URLs, and determine intent.
  */
 async function parseUserIntent(userPrompt: string): Promise<ParsedIntent> {
     console.log('🧠 [Intent Agent] Understanding your request...');
@@ -22,11 +22,14 @@ async function parseUserIntent(userPrompt: string): Promise<ParsedIntent> {
 
 The user will give you a natural language request. Your job is to extract:
 
-1. **platform** – One of: "instagram", "github", "unknown".
+1. **platform** – One of: "instagram", "github", "crypto", "unknown".
    - If user mentions GitHub, repos, repository, issues, PRs, pull requests, starring, fork, commit, push, code → "github"
    - If user mentions Instagram, posts, reels, stories, or includes instagram.com links → "instagram"
+   - If user mentions crypto, bitcoin, ethereum, coin, token, price, market cap,
+     BTC, ETH, SOL, or any other cryptocurrency → "crypto"
+
 2. **urls** – Any Instagram URLs found in the prompt (array of strings). Only look for instagram.com links.
-3. **action** – For Instagram: "analyze", "quick", "compare", "custom". For GitHub: "github_action".
+3. **action** – For Instagram: "analyze", "quick", "compare", "custom". For GitHub: "github_action". For Crypto: "crypto_action".
 4. **userQuery** – The user's full request as-is (string). Do NOT leave empty for GitHub actions.
 
 Respond ONLY with valid JSON, no markdown, no explanation. Examples:
@@ -68,6 +71,9 @@ User prompt: "${userPrompt.replace(/"/g, '\\"')}"`;
         const githubKeywords = /\b(github|repo|repository|repos|repositories|issue|issues|pull\s*request|PR|star|fork|commit|push|branch)\b/i;
         const isGitHub = githubKeywords.test(userPrompt);
 
+        const cryptoKeywords = /\b(crypto|bitcoin|btc|ethereum|eth|solana|sol|coin|token|price|market\s*cap|dogecoin|doge|xrp|cardano|ada)\b/i;
+        const isCrypto = cryptoKeywords.test(userPrompt);
+
         if (instaUrls.length > 0) {
             console.log('⚠️  Fallback: found Instagram URL(s)');
             return {
@@ -87,6 +93,18 @@ User prompt: "${userPrompt.replace(/"/g, '\\"')}"`;
                 platform: 'github',
                 urls: [],
                 action: 'github_action',
+                userQuery: userPrompt,
+                fallback: true
+            };
+        }
+
+        if (isCrypto) {
+            console.log('⚠️  Fallback: detected Crypto keywords');
+            return {
+                success: true,
+                platform: 'crypto',
+                urls: [],
+                action: 'crypto_action',
                 userQuery: userPrompt,
                 fallback: true
             };

@@ -18,6 +18,7 @@ import { runGitHubAgent } from './agents/githubAgent.js';
 import { isConnected, getAuthorizationUrl, exchangeCodeForToken, storeToken, getUser } from './agents/githubOAuthAgent.js';
 import type { ParsedIntent } from './agents/intentParser.js';
 import type { GitHubAgentResult } from './agents/githubAgent.js';
+import { runCryptoAgent } from './agents/cryptoAgent.js';
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -174,6 +175,25 @@ function printGitHubResult(result: GitHubAgentResult): void {
     }
 }
 
+//This for the crypto agent, which is a bit different since we want Gemini to determine the specific crypto action and parameters based on the user's prompt
+async function handleCrypto(intent: ParsedIntent, rawInput: string): Promise<void> {
+    const result = await runCryptoAgent(rawInput || intent.userQuery);
+
+    if (result.success) {
+        console.log('\n💰 ═══════════════════════════════════════');
+        if (result.analysis) {
+            console.log(result.analysis);
+        } else if (Array.isArray(result.data)) {
+            result.data.forEach(q => {
+                console.log(`   ${q.rank}. ${q.name} (${q.symbol}): $${q.price.toLocaleString(undefined, { maximumFractionDigits: 2 })} | 24h: ${q.percent_change_24h.toFixed(2)}%`);
+            });
+        }
+        console.log('═══════════════════════════════════════\n');
+    } else {
+        console.log('\n❌ Crypto agent failed:', result.error, '\n');
+    }
+}
+
 async function main(): Promise<void> {
     console.log('╔══════════════════════════════════════════════════════╗');
     console.log('║         🤖 Agentic Workflow Assistant                ║');
@@ -216,6 +236,9 @@ async function main(): Promise<void> {
                     break;
                 case 'github':
                     await handleGitHub(intent, userInput.trim());
+                    break;
+                case 'crypto':
+                    await handleCrypto(intent, userInput.trim());
                     break;
                 default:
                     console.log('❓ I can help with Instagram analysis and GitHub actions.');

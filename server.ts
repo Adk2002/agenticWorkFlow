@@ -12,6 +12,7 @@ import {
 } from './agents/githubOAuthAgent.js';
 
 import { runGitHubAgent } from './agents/githubAgent.js';
+import { runCryptoAgent } from './agents/cryptoAgent.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.get('/', (req: Request, res: Response) => {
             'GET /auth/github/status': 'Check connection status',
             'POST /auth/github/disconnect': 'Disconnect GitHub',
             'POST /github': 'Run GitHub action – { prompt }',
+            'POST /crypto': 'Run a crypto agent – { prompt }',
         }
     });
 });
@@ -205,6 +207,17 @@ app.post('/analyze/quick', async (req: Request, res: Response) => {
         const errMsg = err instanceof Error ? err.message : String(err);
         res.status(500).json({ error: errMsg });
     }
+});
+
+// ─── Crypto Route ──────────────────────────────────────────
+app.post('/crypto', async (req: Request, res: Response) => {
+    const { prompt } = req.body;
+    if (!prompt) {
+        res.status(400).json({ error: 'prompt is required' });
+        return;
+    }
+    const result = await runCryptoAgent(prompt);
+    res.json(result);
 });
 
 app.listen(PORT, () => {

@@ -185,7 +185,7 @@ async function handleCrypto(intent: ParsedIntent, rawInput: string): Promise<voi
             console.log(result.analysis);
         } else if (Array.isArray(result.data)) {
             result.data.forEach(q => {
-                console.log(`   ${q.rank}. ${q.name} (${q.symbol}): $${q.price.toLocaleString(undefined, { maximumFractionDigits: 2 })} | 24h: ${q.percent_change_24h.toFixed(2)}%`);
+                console.log(`   ${q.rank}. ${q.name} (${q.symbol}): $${q.price.toLocaleString(undefined, { maximumFractionDigits: 3 })} | 24h: ${q.percent_change_24h.toFixed(2)}%`);
             });
         }
         console.log('═══════════════════════════════════════\n');
@@ -195,14 +195,15 @@ async function handleCrypto(intent: ParsedIntent, rawInput: string): Promise<voi
 }
 
 async function main(): Promise<void> {
-    console.log('╔══════════════════════════════════════════════════════╗');
+    console.log('╔═══════════════════════════════════════════════════════╗');
     console.log('║         🤖 Agentic Workflow Assistant                ║');
     console.log('║                                                      ║');
     console.log('║  I can help with:                                    ║');
     console.log('║  📸 Instagram – Analyze posts, reels, stories       ║');
-    console.log('║  🐙 GitHub   – Repos, issues, PRs, push code       ║');
+    console.log('║  🐙 GitHub   – Repos, issues, PRs, push code        ║');
     console.log('║                (No API key needed! Just authorize)   ║');
-    console.log('║                                                      ║');
+    console.log('║  🪙 Crypto market - Analyze the crypto market, and   ║');
+               ('║  get detailed analysis per coin                      ║');
     console.log('║  Just type your request in natural language!         ║');
     console.log('║  Type "exit" to quit.                                ║');
     console.log('╚══════════════════════════════════════════════════════╝');

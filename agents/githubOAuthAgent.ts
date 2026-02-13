@@ -308,6 +308,13 @@ async function listPublicRepos(username: string, options: { sort?: string; per_p
     return response.data;
 }
 
+/**
+ * List all connected GitHub userIds (for multi-user CLI)
+ */
+function listConnectedUsers(): string[] {
+    return Array.from(tokenStore.keys());
+}
+
 export {
     getAuthorizationUrl,
     exchangeCodeForToken,
@@ -328,6 +335,7 @@ export {
     getRepo,
     getPublicUser,
     listPublicRepos,
+    listConnectedUsers,
 };
 
 export type { TokenData, PushResult, FileEntry };

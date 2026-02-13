@@ -15,7 +15,7 @@ import { parseUserIntent } from './agents/intentParser.js';
 import { getInstagramData } from './agents/instagramScraper.js';
 import { generateReport, generateQuickSummary } from './agents/geminiReporter.js';
 import { runGitHubAgent } from './agents/githubAgent.js';
-import { isConnected, getAuthorizationUrl, exchangeCodeForToken, storeToken, getUser } from './agents/githubOAuthAgent.js';
+import { isConnected, getAuthorizationUrl, exchangeCodeForToken, storeToken, getUser, disconnect, listConnectedUsers } from './agents/githubOAuthAgent.js';
 import type { ParsedIntent } from './agents/intentParser.js';
 import type { GitHubAgentResult } from './agents/githubAgent.js';
 import { runCryptoAgent } from './agents/cryptoAgent.js';
@@ -24,6 +24,11 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
+
+// ─── Multi-User Session ─────────────────────────────────────────
+// Each GitHub account gets its own slot keyed by GitHub username.
+// `activeGitHubUser` tracks who is currently "active" in the CLI.
+let activeGitHubUser: string | null = null;
 
 function prompt(question: string): Promise<string> {
     return new Promise((resolve) => rl.question(question, resolve));
@@ -72,9 +77,11 @@ async function handleInstagram(intent: ParsedIntent): Promise<void> {
 }
 
 async function handleGitHub(intent: ParsedIntent, rawInput: string): Promise<void> {
+    // Use the active GitHub user (or a temp key for initial auth)
+    const userId = activeGitHubUser || '__pending__';
     // Pass raw user input so GitHub URLs aren't lost by intent reformulation
     const query = rawInput || intent.userQuery;
-    const result: GitHubAgentResult = await runGitHubAgent(query, 'cli-user');
+    const result: GitHubAgentResult = await runGitHubAgent(query, userId);
 
     // If the agent says auth is needed, start the OAuth flow
     if (result.needsAuth) {
@@ -110,25 +117,39 @@ async function startOAuthFlow(intent: ParsedIntent, rawInput: string): Promise<b
 
             try {
                 const tokenData = await exchangeCodeForToken(code as string);
-                storeToken('cli-user', tokenData);
-                const user = await getUser('cli-user');
+
+                // Store with a temp key first to fetch the username
+                storeToken('__pending__', tokenData);
+                const user = await getUser('__pending__');
+                const ghUsername: string = user.login;
+
+                // Now store under the real GitHub username
+                storeToken(ghUsername, tokenData);
+                // Remove the temp key (if different)
+                if (ghUsername !== '__pending__') {
+                    disconnect('__pending__');
+                }
+
+                // Set this account as the active CLI user
+                activeGitHubUser = ghUsername;
 
                 res.send(`
                     <html>
                     <body style="font-family: Arial; text-align: center; padding: 50px; background: #0d1117; color: #e6edf3;">
-                        <h1>✅ Connected as ${user.login}!</h1>
+                        <h1>✅ Connected as ${ghUsername}!</h1>
                         <p>You can close this window and go back to the terminal.</p>
                     </body>
                     </html>
                 `);
 
-                console.log(`\n✅ GitHub connected as: ${user.login}`);
+                console.log(`\n✅ GitHub connected as: ${ghUsername}`);
+                console.log(`   Active account set to: ${ghUsername}`);
                 console.log('   Now processing your request...\n');
 
                 server.close();
 
                 // Re-run the original request now that we're authenticated
-                const result = await runGitHubAgent(rawInput || intent.userQuery, 'cli-user');
+                const result = await runGitHubAgent(rawInput || intent.userQuery, ghUsername);
                 printGitHubResult(result);
                 resolve(true);
             } catch (error: unknown) {
@@ -144,7 +165,7 @@ async function startOAuthFlow(intent: ParsedIntent, rawInput: string): Promise<b
                 client_id: process.env.GITHUB_CLIENT_ID!,
                 redirect_uri: `http://localhost:${PORT}/auth/github/callback`,
                 scope: 'repo user read:org workflow',
-                state: 'cli-user',
+                state: 'multi-user-cli',
             });
             const authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
 
@@ -154,11 +175,9 @@ async function startOAuthFlow(intent: ParsedIntent, rawInput: string): Promise<b
         });
 
         setTimeout(() => {
-            if (!isConnected('cli-user')) {
-                console.log('⏰ Authorization timed out. Try again.');
-                server.close();
-                resolve(false);
-            }
+            server.close();
+            resolve(false);
+            console.log('⏰ Authorization timed out. Try again.');
         }, 120000);
     });
 }
@@ -202,22 +221,76 @@ async function main(): Promise<void> {
     console.log('║  📸 Instagram – Analyze posts, reels, stories       ║');
     console.log('║  🐙 GitHub   – Repos, issues, PRs, push code        ║');
     console.log('║                (No API key needed! Just authorize)   ║');
-    console.log('║  🪙 Crypto market - Analyze the crypto market, and   ║');
-               ('║  get detailed analysis per coin                      ║');
+    console.log('║  🪙 Crypto   – Analyze the crypto market, and       ║');
+    console.log('║                get detailed analysis per coin        ║');
+    console.log('║                                                      ║');
+    console.log('║  👥 Multi-user GitHub commands:                      ║');
+    console.log('║     "connect github" – Link a new GitHub account    ║');
+    console.log('║     "switch account" – Switch active GitHub user    ║');
+    console.log('║     "accounts"       – List connected accounts      ║');
+    console.log('║     "whoami"         – Show active GitHub account   ║');
+    console.log('║     "disconnect"     – Remove active account        ║');
+    console.log('║                                                      ║');
     console.log('║  Just type your request in natural language!         ║');
     console.log('║  Type "exit" to quit.                                ║');
     console.log('╚══════════════════════════════════════════════════════╝');
 
-    const ghStatus = isConnected('cli-user') ? '✅ Connected' : '❌ Not connected (will prompt on first use)';
-    console.log(`\n   GitHub: ${ghStatus}\n`);
+    showGitHubStatus();
 
     while (true) {
-        const userInput = await prompt('🧑 You: ');
+        const prefix = activeGitHubUser ? `[${activeGitHubUser}]` : '[no account]';
+        const userInput = await prompt(`🧑 ${prefix} You: `);
 
         if (!userInput || userInput.trim().toLowerCase() === 'exit') {
             console.log('👋 Goodbye!');
             rl.close();
             break;
+        }
+
+        const cmd = userInput.trim().toLowerCase();
+
+        // ─── Account management commands ───────────
+        if (cmd === 'connect github' || cmd === 'add account') {
+            await startOAuthFlow({ platform: 'github', urls: [], action: '', userQuery: '', success: true }, '');
+            continue;
+        }
+
+        if (cmd === 'accounts' || cmd === 'list accounts') {
+            showGitHubStatus();
+            continue;
+        }
+
+        if (cmd === 'whoami') {
+            if (activeGitHubUser) {
+                console.log(`\n   🐙 Active GitHub account: ${activeGitHubUser}\n`);
+            } else {
+                console.log('\n   ❌ No active GitHub account. Type "connect github" to link one.\n');
+            }
+            continue;
+        }
+
+        if (cmd === 'switch account' || cmd === 'switch') {
+            await switchAccount();
+            continue;
+        }
+
+        if (cmd === 'disconnect') {
+            if (activeGitHubUser) {
+                const name = activeGitHubUser;
+                disconnect(activeGitHubUser);
+                console.log(`\n   🔓 Disconnected: ${name}`);
+                // Pick the next available account, if any
+                const remaining = listConnectedUsers();
+                activeGitHubUser = remaining.length > 0 ? remaining[0] : null;
+                if (activeGitHubUser) {
+                    console.log(`   ↪️  Switched to: ${activeGitHubUser}\n`);
+                } else {
+                    console.log('   No accounts left. Type "connect github" to link one.\n');
+                }
+            } else {
+                console.log('\n   ❌ No active account to disconnect.\n');
+            }
+            continue;
         }
 
         try {
@@ -253,6 +326,48 @@ async function main(): Promise<void> {
             const errMsg = error instanceof Error ? error.message : String(error);
             console.error('❌ Error:', errMsg, '\n');
         }
+    }
+}
+
+function showGitHubStatus(): void {
+    const accounts = listConnectedUsers();
+    if (accounts.length === 0) {
+        console.log('\n   GitHub: ❌ No accounts connected (type "connect github" to link one)\n');
+    } else {
+        console.log(`\n   GitHub: ${accounts.length} account(s) connected`);
+        accounts.forEach(u => {
+            const marker = u === activeGitHubUser ? ' 👈 active' : '';
+            console.log(`      • ${u}${marker}`);
+        });
+        console.log();
+    }
+}
+
+async function switchAccount(): Promise<void> {
+    const accounts = listConnectedUsers();
+    if (accounts.length === 0) {
+        console.log('\n   No accounts connected. Type "connect github" to link one.\n');
+        return;
+    }
+    if (accounts.length === 1) {
+        activeGitHubUser = accounts[0];
+        console.log(`\n   Only one account available: ${activeGitHubUser} (already active)\n`);
+        return;
+    }
+
+    console.log('\n   Connected accounts:');
+    accounts.forEach((u, i) => {
+        const marker = u === activeGitHubUser ? ' (active)' : '';
+        console.log(`      ${i + 1}. ${u}${marker}`);
+    });
+
+    const choice = await prompt('   Enter number to switch to: ');
+    const idx = parseInt(choice, 10) - 1;
+    if (idx >= 0 && idx < accounts.length) {
+        activeGitHubUser = accounts[idx];
+        console.log(`\n   ✅ Switched to: ${activeGitHubUser}\n`);
+    } else {
+        console.log('   ❌ Invalid choice.\n');
     }
 }
 

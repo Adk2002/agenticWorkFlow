@@ -102,6 +102,8 @@ ${JSON.stringify(quotes, null, 2)}
 2. **Momentum** – 1h / 24h / 7d % changes. Bullish or bearish?
 3. **Volume Analysis** – Is trading volume healthy relative to market cap?
 4. **Key Takeaway** – One-liner verdict for each coin.
+5. **Comparative Insight** – If the User ask this "How do these coins compare to each other?"
+
 
 
 ${userQuery ? `\n## Additional User Request\n${userQuery}\n` : ''}

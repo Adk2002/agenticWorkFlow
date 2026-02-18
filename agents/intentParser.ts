@@ -74,6 +74,25 @@ User prompt: "${userPrompt.replace(/"/g, '\\"')}"`;
         const cryptoKeywords = /\b(crypto|bitcoin|btc|ethereum|eth|solana|sol|coin|token|price|market\s*cap|dogecoin|doge|xrp|cardano|ada)\b/i;
         const isCrypto = cryptoKeywords.test(userPrompt);
 
+        // const imageKeywords = [
+        //     "generate image", "create image", "draw", "picture", "illustration",
+        //     "generate art", "image generation", "transform image", "edit image",
+        //     "modify image", "create a photo", "make an image", "make a picture",
+        //     "describe image", "analyze image", "paint", "sketch", "render","lower prompt"
+        // ];
+        // const lowerPrompt = userPrompt.toLowerCase();
+        // if (imageKeywords.some((kw) => lowerPrompt.includes(kw))) {
+        //     return {
+        //         success: true,
+        //         platform: "image_generation",
+        //         action: "image_gen_action",
+        //         userQuery: userPrompt,
+        //         fallback: true,
+        //         urls: []
+        //     };
+        // }
+
+
         if (instaUrls.length > 0) {
             console.log('⚠️  Fallback: found Instagram URL(s)');
             return {
@@ -109,7 +128,7 @@ User prompt: "${userPrompt.replace(/"/g, '\\"')}"`;
                 fallback: true
             };
         }
-
+        
         return {
             success: false,
             error: errMsg,

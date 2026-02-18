@@ -19,6 +19,9 @@ import { isConnected, getAuthorizationUrl, exchangeCodeForToken, storeToken, get
 import type { ParsedIntent } from './agents/intentParser.js';
 import type { GitHubAgentResult } from './agents/githubAgent.js';
 import { runCryptoAgent } from './agents/cryptoAgent.js';
+// import { runImageGenAgent } from "./agents/imageGenAgent.js";
+// import fs from 'fs';
+// import path from 'path';
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -213,6 +216,46 @@ async function handleCrypto(intent: ParsedIntent, rawInput: string): Promise<voi
     }
 }
 
+// async function handleImageGen(query: string): Promise<void> {
+//     console.log("\n🖼️  Routing to Image Generation Agent...");
+
+//     // Show what's in the uploads folder
+//     const uploadsDir = path.resolve("../uploads");
+//     if (fs.existsSync(uploadsDir)) {
+//         const files = fs.readdirSync(uploadsDir).filter((f) => {
+//             const ext = path.extname(f).toLowerCase();
+//             return [".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext);
+//         });
+//         if (files.length > 0) {
+//             console.log(`📂 Reference images in ./uploads: ${files.join(", ")}`);
+//         } else {
+//             console.log("📂 No reference images in ./uploads (generating from text only)");
+//         }
+//     }
+
+//     const result = await runImageGenAgent(query);
+
+//     if (result.success) {
+//         console.log("\n✅ Image Generation Successful!");
+//         console.log(`   Action: ${result.action}`);
+//         if (result.outputPath) {
+//             console.log(`   📁 Saved to: ${result.outputPath}`);
+//         }
+//         if (result.description) {
+//             console.log(`   📝 Description: ${result.description}`);
+//         }
+//         if (result.referenceImagesUsed && result.referenceImagesUsed.length > 0) {
+//             console.log(`   🖼️  Reference images used: ${result.referenceImagesUsed.join(", ")}`);
+//         }
+//     } else {
+//         console.log("\n❌ Image Generation Failed");
+//         console.log(`   Error: ${result.error}`);
+//         if (result.description) {
+//             console.log(`   Details: ${result.description}`);
+//         }
+//     }
+// }
+
 async function main(): Promise<void> {
     console.log('╔═══════════════════════════════════════════════════════╗');
     console.log('║         🤖 Agentic Workflow Assistant                ║');
@@ -314,6 +357,9 @@ async function main(): Promise<void> {
                 case 'crypto':
                     await handleCrypto(intent, userInput.trim());
                     break;
+                // case 'image_generation':
+                //     await handleImageGen(userInput.trim());
+                //     break;
                 default:
                     console.log('❓ I can help with Instagram analysis and GitHub actions.');
                     console.log('💡 Examples:');

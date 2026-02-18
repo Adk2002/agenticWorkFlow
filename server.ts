@@ -13,6 +13,9 @@ import {
 
 import { runGitHubAgent } from './agents/githubAgent.js';
 import { runCryptoAgent } from './agents/cryptoAgent.js';
+// import { runImageGenAgent } from "./agents/imageGenAgent.js";
+// import fs from 'fs';
+// import path from 'path';
 
 dotenv.config();
 
@@ -48,6 +51,7 @@ app.get('/', (req: Request, res: Response) => {
             'POST /auth/github/disconnect': 'Disconnect GitHub',
             'POST /github': 'Run GitHub action – { prompt }',
             'POST /crypto': 'Run a crypto agent – { prompt }',
+            // 'POST /image/generate': 'Generate an image – { prompt }',
         }
     });
 });
@@ -219,6 +223,103 @@ app.post('/crypto', async (req: Request, res: Response) => {
     const result = await runCryptoAgent(prompt);
     res.json(result);
 });
+
+// Helper to call (Gemini)Nano Banana image generation model
+
+// // Add static file serving for the Images directory (place near other middleware):
+// app.use("/images", express.static(path.resolve("./Images")));
+
+// // Add these routes (place near other route definitions):
+
+// /**
+//  * POST /image/generate
+//  * Body: { "prompt": "a sunset over mountains" }
+//  * Returns: ImageGenResult JSON
+//  */
+// app.post("/image/generate", async (req: any, res: any) => {
+//   try {
+//     const { prompt } = req.body;
+
+//     if (!prompt || typeof prompt !== "string") {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Missing or invalid 'prompt' in request body.",
+//       });
+//     }
+
+//     console.log(`\n🖼️  API: Image generation request - "${prompt}"`);
+//     const result = await runImageGenAgent(prompt);
+
+//     // If an image was generated, include the serving URL
+//     if (result.success && result.outputPath) {
+//       const filename = path.basename(result.outputPath);
+//       (result as any).imageUrl = `/images/${filename}`;
+//     }
+
+//     return res.json(result);
+//   } catch (error: any) {
+//     console.error("Image generation API error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       error: `Server error: ${error.message}`,
+//     });
+//   }
+// });
+
+// /**
+//  * GET /image/uploads
+//  * Lists all reference images currently in the ./uploads directory
+//  */
+// app.get("/image/uploads", (req: any, res: any) => {
+//   try {
+//     const uploadsDir = path.resolve("./uploads");
+//     if (!fs.existsSync(uploadsDir)) {
+//       return res.json({ files: [] });
+//     }
+
+//     const files = fs.readdirSync(uploadsDir).filter((f: string) => {
+//       const ext = path.extname(f).toLowerCase();
+//       return [".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext);
+//     });
+
+//     return res.json({
+//       directory: uploadsDir,
+//       count: files.length,
+//       files,
+//     });
+//   } catch (error: any) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// });
+
+// /**
+//  * GET /image/generated
+//  * Lists all generated images in the ./Images directory
+//  */
+// app.get("/image/generated", (req: any, res: any) => {
+//   try {
+//     const imagesDir = path.resolve("./Images");
+//     if (!fs.existsSync(imagesDir)) {
+//       return res.json({ files: [] });
+//     }
+
+//     const files = fs.readdirSync(imagesDir).filter((f: string) => {
+//       const ext = path.extname(f).toLowerCase();
+//       return [".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext);
+//     });
+
+//     return res.json({
+//       directory: imagesDir,
+//       count: files.length,
+//       files: files.map((f: string) => ({
+//         name: f,
+//         url: `/images/${f}`,
+//       })),
+//     });
+//   } catch (error: any) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// });
 
 app.listen(PORT, () => {
     console.log(`\n🚀 Server running on http://localhost:${PORT}`);
